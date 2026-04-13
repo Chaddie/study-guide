@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type DocRow = {
   id: string;
@@ -32,33 +32,6 @@ export default function DashboardPage() {
     void load();
   }, [load]);
 
-  useLayoutEffect(() => {
-    const el = document.getElementById("upload-dropzone");
-    const r = el?.getBoundingClientRect();
-    // #region agent log
-    const payload = {
-      sessionId: "363ac6",
-      hypothesisId: "H3-H4",
-      location: "dashboard:mount",
-      message: "dropzone layout",
-      data: {
-        dropzoneH: r?.height ?? -1,
-        dropzoneW: r?.width ?? -1,
-        path: typeof window !== "undefined" ? window.location.pathname : "",
-      },
-      timestamp: Date.now(),
-    };
-    fetch("http://127.0.0.1:7594/ingest/50ba8f3a-7b80-492f-9c80-f2e24990c5f7", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "363ac6",
-      },
-      body: JSON.stringify(payload),
-    }).catch(() => {});
-    // #endregion
-  }, []);
-
   async function onFile(file: File | null) {
     if (!file) return;
     setUploading(true);
@@ -68,8 +41,12 @@ export default function DashboardPage() {
       fd.set("file", file);
       const res = await fetch("/api/documents", { method: "POST", body: fd });
       if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(j.error ?? "Upload failed");
+        const j = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          detail?: string;
+        };
+        const msg = j.detail ? `${j.error ?? "Upload failed"} — ${j.detail}` : (j.error ?? "Upload failed");
+        setError(msg);
         return;
       }
       const doc = (await res.json()) as { id: string };

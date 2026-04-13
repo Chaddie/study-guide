@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { saveUpload } from "@/lib/storage";
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 const MAX_BYTES = 15 * 1024 * 1024;
 
 export async function GET() {

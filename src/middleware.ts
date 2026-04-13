@@ -34,31 +34,6 @@ export async function middleware(request: NextRequest) {
     secureCookie,
   });
 
-  // #region agent log
-  const mwPayload = {
-    sessionId: "363ac6",
-    hypothesisId: "H1",
-    location: "middleware:getToken",
-    message: "session check",
-    data: {
-      path,
-      protocol: request.nextUrl.protocol,
-      secureCookie,
-      hasToken: !!token,
-    },
-    timestamp: Date.now(),
-  };
-  console.log("[DBG-363ac6]", JSON.stringify(mwPayload));
-  fetch("http://127.0.0.1:7594/ingest/50ba8f3a-7b80-492f-9c80-f2e24990c5f7", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "363ac6",
-    },
-    body: JSON.stringify(mwPayload),
-  }).catch(() => {});
-  // #endregion
-
   if (!token) {
     if (path.startsWith("/api")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

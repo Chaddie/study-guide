@@ -1,19 +1,25 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { tmpdir } from "os";
 import { put } from "@vercel/blob";
+
+/** Marker for Vercel: bytes stay in RAM for this request only (extraction uses the buffer). */
+const MEMORY_PREFIX = "vercel:memory:";
 
 function isRemoteKey(storageKey: string) {
   return storageKey.startsWith("http://") || storageKey.startsWith("https://");
 }
 
-/** Writable uploads dir on Vercel serverless when Blob is not configured. */
-function vercelTempUploadDir() {
-  return join(tmpdir(), "study-guide-uploads");
+function isMemoryKey(storageKey: string) {
+  return storageKey.startsWith(MEMORY_PREFIX);
 }
 
 function localUploadDir() {
   return join(process.cwd(), "uploads");
+}
+
+/** True on Vercel deployments (serverless FS is not a durable writable project dir). */
+function isVercel() {
+  return Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
 }
 
 export async function saveUpload(
@@ -34,24 +40,25 @@ export async function saveUpload(
       return blob.url;
     } catch (e) {
       console.error("[storage] Vercel Blob put failed:", e);
-      throw e;
+      if (!isVercel()) throw e;
+      // Invalid/expired token is common; on Vercel fall back so OCR still runs.
     }
   }
 
-  // Vercel: project dir is not writable; only /tmp is (and Blob above).
-  if (process.env.VERCEL) {
-    const dir = vercelTempUploadDir();
-    await mkdir(dir, { recursive: true });
-    const path = join(dir, unique);
-    await writeFile(path, data);
-    return unique;
+  if (isVercel()) {
+    return `${MEMORY_PREFIX}${unique}`;
   }
 
-  const uploadsDir = localUploadDir();
-  await mkdir(uploadsDir, { recursive: true });
-  const path = join(uploadsDir, unique);
-  await writeFile(path, data);
-  return unique;
+  try {
+    const uploadsDir = localUploadDir();
+    await mkdir(uploadsDir, { recursive: true });
+    const path = join(uploadsDir, unique);
+    await writeFile(path, data);
+    return unique;
+  } catch (e) {
+    console.error("[storage] filesystem upload failed, using memory key:", e);
+    return `${MEMORY_PREFIX}${unique}`;
+  }
 }
 
 export async function readUpload(storageKey: string): Promise<Buffer> {
@@ -61,9 +68,10 @@ export async function readUpload(storageKey: string): Promise<Buffer> {
     return Buffer.from(await res.arrayBuffer());
   }
 
-  if (process.env.VERCEL && !isRemoteKey(storageKey)) {
-    const path = join(vercelTempUploadDir(), storageKey);
-    return readFile(path);
+  if (isMemoryKey(storageKey)) {
+    throw new Error(
+      "Original file was not kept on the server; upload again to re-process.",
+    );
   }
 
   return readFile(join(localUploadDir(), storageKey));
