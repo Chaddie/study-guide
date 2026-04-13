@@ -9,10 +9,15 @@ export function getChatClient() {
   });
 }
 
+/** Defaults match models with text+image input on https://docs.x.ai/docs/models */
 export function chatModel() {
-  return process.env.XAI_CHAT_MODEL ?? "grok-2-latest";
+  return process.env.XAI_CHAT_MODEL ?? "grok-4-1-fast-non-reasoning";
 }
 
 export function visionModel() {
-  return process.env.XAI_VISION_MODEL ?? "grok-2-vision-latest";
+  return (
+    process.env.XAI_VISION_MODEL ??
+    process.env.XAI_CHAT_MODEL ??
+    "grok-4-1-fast-non-reasoning"
+  );
 }
