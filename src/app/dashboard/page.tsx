@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 type DocRow = {
   id: string;
@@ -31,6 +31,33 @@ export default function DashboardPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useLayoutEffect(() => {
+    const el = document.getElementById("upload-dropzone");
+    const r = el?.getBoundingClientRect();
+    // #region agent log
+    const payload = {
+      sessionId: "363ac6",
+      hypothesisId: "H3-H4",
+      location: "dashboard:mount",
+      message: "dropzone layout",
+      data: {
+        dropzoneH: r?.height ?? -1,
+        dropzoneW: r?.width ?? -1,
+        path: typeof window !== "undefined" ? window.location.pathname : "",
+      },
+      timestamp: Date.now(),
+    };
+    fetch("http://127.0.0.1:7594/ingest/50ba8f3a-7b80-492f-9c80-f2e24990c5f7", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "363ac6",
+      },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+    // #endregion
+  }, []);
 
   async function onFile(file: File | null) {
     if (!file) return;
@@ -62,18 +89,24 @@ export default function DashboardPage() {
         images uses Grok vision).
       </p>
 
-      <label className="mt-8 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 bg-white px-6 py-12 transition hover:border-indigo-400 hover:bg-indigo-50/30 dark:border-zinc-600 dark:bg-zinc-900/50 dark:hover:border-indigo-500">
+      <label
+        id="upload-dropzone"
+        className="relative mt-8 flex min-h-[8rem] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-zinc-300 bg-white px-6 py-12 transition hover:border-indigo-400 hover:bg-indigo-50/30 dark:border-zinc-600 dark:bg-zinc-900/50 dark:hover:border-indigo-500"
+      >
         <input
           type="file"
           accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
-          className="hidden"
+          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
           disabled={uploading}
           onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
+          aria-label="Upload PDF or image"
         />
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        <span className="pointer-events-none text-sm font-medium text-zinc-700 dark:text-zinc-300">
           {uploading ? "Uploading…" : "Drop or click to upload PDF / image"}
         </span>
-        <span className="mt-1 text-xs text-zinc-500">Max 15 MB</span>
+        <span className="pointer-events-none mt-1 text-xs text-zinc-500">
+          Max 15 MB
+        </span>
       </label>
 
       {error && (
