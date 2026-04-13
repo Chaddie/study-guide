@@ -64,8 +64,12 @@ export async function POST(req: NextRequest) {
   try {
     storageKey = await saveUpload(file.name, buf, mime);
   } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "Failed to store file" }, { status: 500 });
+    console.error("[documents POST] saveUpload:", e);
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json(
+      { error: "Failed to store file", detail: msg },
+      { status: 500 },
+    );
   }
 
   const doc = await prisma.document.create({
